@@ -1,0 +1,8 @@
+lightning
+hydra-core
+transformers
+sentencepiece
+wandb
+evaluate
+rouge-score
+bert_score

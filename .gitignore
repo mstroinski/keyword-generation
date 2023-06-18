@@ -1,0 +1,24 @@
+.ipynb_checkpoints/
+.venv/
+__pycache__/
+.DS_Store
+
+# Loggs
+lightning_logs/
+wandb/
+None/
+outputs/
+
+# Notebooks
+data_exploration.ipynb
+dataset_preparation.ipynb
+file_mapping.ipynb
+tests.ipynb
+
+# Intermidiade data
+data/processed/
+data/mapping_helpers/
+data/raw/
+
+# To big data files
+data/experiments/standard/train.txt
