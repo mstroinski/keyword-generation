@@ -1,0 +1,12 @@
+defaults:
+  - kw_config
+
+data:
+  path: /net/tscratch/people/plgmstroinski/data/standard
+
+logging:
+  wandb:
+    project: athena-test
+    local_path: /net/tscratch/people/plgmstroinski/logs
+  lightning:
+    local_path: /net/tscratch/people/plgmstroinski/logs

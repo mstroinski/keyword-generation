@@ -1,7 +1,7 @@
 import hydra.core.config_store
 import lightning as L 
 
-from src.dataset import prepare_dataloaders, KWDataset
+from src.dataset import prepare_dataloaders
 from config.kw_config import KWConfig
 from src.model import KWModel
 
@@ -10,10 +10,8 @@ cs.store(name="kw_config", node=KWConfig)
 
 @hydra.main(version_base=None, config_path="config", config_name="config")
 def main(cfg: KWConfig):
-    # train_dataloader, _, _ = prepare_dataloaders(cfg.data)
-    data = KWDataset("data/processed/MATCHED_m36_a15.txt")
-    import torch
-    train_dataloader = torch.utils.data.DataLoader(data, batch_size=8, collate_fn=lambda x: x)
+    train_dataloader, val_dataloader, test_dataloader = prepare_dataloaders(cfg.data)
+
     wandb_logger = L.pytorch.loggers.WandbLogger(project=cfg.logging.wandb.project, save_dir=cfg.logging.wandb.local_path)    
     wandb_logger.experiment.config.update(cfg)
     
@@ -30,7 +28,8 @@ def main(cfg: KWConfig):
                         callbacks=[model_checkpoint, early_stopping],
                         logger=wandb_logger)
     
-    trainer.fit(model, train_dataloader)
+    trainer.fit(model, train_dataloader, val_dataloader)
+    trainer.test(model, test_dataloader)
     
     
 if __name__ == "__main__":

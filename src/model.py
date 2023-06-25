@@ -1,9 +1,11 @@
 from transformers.tokenization_utils import PreTrainedTokenizer
 from hydra.utils import instantiate
-from config.kw_config import Model
 import lightning as L
 import evaluate
 import torch
+
+from config.kw_config import Model
+from src.metrics import BertScore
 
 class KWModel(L.LightningModule):
     def __init__(self, config: Model, batch_size: int):
@@ -13,7 +15,7 @@ class KWModel(L.LightningModule):
         self.tokenizer: PreTrainedTokenizer = instantiate(config.huggingface.tokenizer)
         self.loss = instantiate(config.loss)
         self.rouge = evaluate.load("rouge")
-        self.bert_score = evaluate.load("bertscore")
+        self.bert_score = BertScore()
         self.batch_size = batch_size
         
     
@@ -33,16 +35,13 @@ class KWModel(L.LightningModule):
         return decoded_output
     
     def training_step(self, batch: list[dict], batch_idx: int) -> torch.Tensor:
-        train_loss, logits = self.step(batch)
-        
+        train_loss, _ = self.step(batch)
+    
         self.log("train_loss", train_loss, on_epoch=True, batch_size=self.batch_size)
-        
-        keywords = [sample["kw"] for sample in batch]
-        metrics = self.calculate_metrics(logits=logits, gt_keywords=keywords)
 
         return train_loss
     
-    def validation_step(self, batch: list[dict], batch_idx: int):
+    def validation_step(self, batch: list[dict], batch_idx: int) -> None:
         val_loss, logits = self.step(batch)
         
         keywords = [sample["kw"] for sample in batch]
@@ -50,14 +49,19 @@ class KWModel(L.LightningModule):
         metrics["val_loss"] = val_loss
         
         self.log_dict(metrics, on_epoch=True)
-        
-        return val_loss
     
-    def test_step(self, batch: list[dict], batch_idx: int):
-        pass
+    def test_step(self, batch: list[dict], batch_idx: int) -> None:
+        _, logits = self.step(batch)
+        
+        keywords = [sample["kw"] for sample in batch]
+        metrics = self.calculate_metrics(logits=logits, gt_keywords=keywords)
+        metrics = {"test_"+key: val for key, val in metrics.items()}
+        
+        self.log_dict(metrics, on_epoch=True)
+        
     
     def step(self, batch: list[dict]) -> tuple[torch.Tensor, torch.Tensor]:
-        texts = [' '.join([sample["title"], sample["abstract"]]) for sample in batch]
+        texts = [' '.join(["Generate keywords: ", sample["title"], sample["abstract"]]) for sample in batch]
         encoded_text = self.tokenizer(texts, 
                                       return_tensors="pt", 
                                       max_length=self.config.huggingface.text_tokenizer_max_len, 
@@ -92,17 +96,9 @@ class KWModel(L.LightningModule):
         if rouge:
             metrics.update(rouge)
             
-        bert_score  = self.bert_score.compute(predictions=predictions, references=gt_keywords, lang="en")
-        # print(f"===============")
-        # print(f"Predictions:\n{predictions}")
-        # print(f"\n=============================\n")
-        # print(f"GT:\n{gt_keywords}")
-        # print(f"================")
-        # print(bert_score)
+        bert_score  = self.bert_score.compute(predictions=predictions, gt_keywords=gt_keywords)
         if bert_score:
-            metrics["bertscore_f1"] = sum(bert_score["f1"]) / len(bert_score["f1"])
-            metrics["bertscore_precision"] = sum(bert_score["precision"]) / len(bert_score["precision"])
-            metrics["bertscore_recall"] = sum(bert_score["recall"]) / len(bert_score["recall"])
+            metrics.update(bert_score)
             
         return metrics
         

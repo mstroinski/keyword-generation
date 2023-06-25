@@ -31,7 +31,7 @@ model:
   output_max_len: 32
 
 data:
-  path: data/processed/MATCHED_m36_a15.txt
+  path: data/experiments/standard
   num_workers: 8
   batch_size: 64
 

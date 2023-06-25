@@ -15,10 +15,5 @@ dataset_preparation.ipynb
 file_mapping.ipynb
 tests.ipynb
 
-# Intermidiade data
-data/processed/
-data/mapping_helpers/
-data/raw/
-
-# To big data files
-data/experiments/standard/train.txt
+# Data files are too big to be stored here
+data/
