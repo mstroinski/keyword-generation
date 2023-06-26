@@ -18,10 +18,9 @@ class KWDataset(torch.utils.data.Dataset):
         with open(self.data_path, 'r') as f:
             f.seek(offset)
             line = f.readline()
-            try:
-                entry = json.loads(line)
-            except Exception as e:
-                entry = {"title": "", "abstract": "", "kw": [], "fos": {}}
+            entry = json.loads(line)
+            # except Exception as e:
+            #     entry = {"title": "", "abstract": "", "kw": [], "fos": {}}
             return entry
     
     def _get_offset_list(self, path: str, chunk_size: int=2**10) -> list[int]:
@@ -32,7 +31,7 @@ class KWDataset(torch.utils.data.Dataset):
                 for line in chunk:
                     offsets.append(offsets[-1] + len(line))
                 chunk = file.readlines(chunk_size)
-        return offsets
+        return offsets[:-1]
     
 def _collate(x):
     """
