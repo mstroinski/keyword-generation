@@ -17,3 +17,6 @@ tests.ipynb
 
 # Data files are too big to be stored here
 data/
+
+# SLURM job script which includes wandb key :) 
+job.sh
