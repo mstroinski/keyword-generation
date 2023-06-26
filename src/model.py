@@ -1,5 +1,6 @@
 from transformers.tokenization_utils import PreTrainedTokenizer
 from hydra.utils import instantiate
+from datetime import datetime
 import lightning as L
 import evaluate
 import torch
@@ -18,6 +19,8 @@ class KWModel(L.LightningModule):
         self.bert_score = BertScore()
         self.batch_size = batch_size
         
+        _now = datetime.now().strftime("%H:%M:%S")
+        self.test_output_path = config.test_output + _now + ".txt"
     
     def forward(self, x: list|str) -> str:
         tokenized_sample = self.tokenizer(x,
@@ -48,7 +51,7 @@ class KWModel(L.LightningModule):
         metrics = self.calculate_metrics(logits=logits, gt_keywords=keywords)
         metrics["val_loss"] = val_loss
         
-        self.log_dict(metrics, on_epoch=True, batch_size=64)
+        self.log_dict(metrics, on_epoch=True, batch_size=self.batch_size)
     
     def test_step(self, batch: list[dict], batch_idx: int) -> None:
         _, logits = self.step(batch)
@@ -57,9 +60,9 @@ class KWModel(L.LightningModule):
         metrics = self.calculate_metrics(logits=logits, gt_keywords=keywords)
         metrics = {"test_"+key: val for key, val in metrics.items()}
         
-        self.log_dict(metrics, on_epoch=True)
+        self.save_test_output(logits=logits, gt_keywords=keywords)
+        self.log_dict(metrics, on_epoch=True, batch_size=self.batch_size)
         
-    
     def step(self, batch: list[dict]) -> tuple[torch.Tensor, torch.Tensor]:
         texts = [' '.join(["Generate keywords: ", sample["title"], sample["abstract"]]) for sample in batch]
         encoded_text = self.tokenizer(texts, 
@@ -70,17 +73,14 @@ class KWModel(L.LightningModule):
         
         keywords = [sample["kw"] for sample in batch]
         
-        try: 
-            encoded_keywords = self.tokenizer(keywords, 
-                                          return_tensors="pt", 
-                                          max_length=self.config.huggingface.kw_tokenizer_max_len, 
-                                          padding="max_length", 
-                                          truncation=True, 
-                                          is_split_into_words=True)
-        except Exception as E:
-            print(f"BAD KW: {keywords}")
-            print(f"{len(keywords) = }")
-            print(f"{len(batch) = }")
+
+        encoded_keywords = self.tokenizer(keywords, 
+                                        return_tensors="pt", 
+                                        max_length=self.config.huggingface.kw_tokenizer_max_len, 
+                                        padding="max_length", 
+                                        truncation=True, 
+                                        is_split_into_words=True)
+
         encoded_keywords.input_ids[encoded_keywords.input_ids[:, :] == self.tokenizer.pad_token_id] = -100
 
         # This approach calculates loss twice but it still outperforms generate() / manual label shifting 
@@ -107,6 +107,16 @@ class KWModel(L.LightningModule):
             metrics.update(bert_score)
             
         return metrics
+    
+    def save_test_output(self, logits: torch.Tensor, gt_keywords: list[list[str]]) -> None:
+        pred_tokens = torch.argmax(input=logits, dim=-1)
+        predictions = self.tokenizer.batch_decode(pred_tokens, skip_special_tokens=True, clean_up_tokenization_spaces=True)
+        
+        with open(self.test_output_path, "a") as f:
+            for pred, kw in zip(predictions, gt_keywords):
+                sample = f"Predictions: {pred}\nGT: {kw}\n\n"
+                f.write(sample)
+        
         
     def configure_optimizers(self) -> torch.optim.Optimizer:
         return instantiate(self.config.optimizer, params=self.parameters())

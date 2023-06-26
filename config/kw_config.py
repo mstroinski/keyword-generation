@@ -39,6 +39,7 @@ class Model():
     optimizer: Optimizer
     loss: Loss
     output_max_len: int
+    test_output: str
 
 @dataclass
 class Data():

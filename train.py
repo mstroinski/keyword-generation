@@ -10,7 +10,6 @@ cs.store(name="kw_config", node=KWConfig)
 
 @hydra.main(version_base=None, config_path="config", config_name="config")
 def main(cfg: KWConfig):
-    print(cfg)
     train_dataloader, val_dataloader, test_dataloader = prepare_dataloaders(cfg.data)
 
     wandb_logger = L.pytorch.loggers.WandbLogger(project=cfg.logging.wandb.project, save_dir=cfg.logging.wandb.local_path)    
@@ -29,7 +28,7 @@ def main(cfg: KWConfig):
                         callbacks=[model_checkpoint, early_stopping],
                         logger=wandb_logger)
     
-    trainer.fit(model, train_dataloader, val_dataloader)
+    # trainer.fit(model, train_dataloader, val_dataloader)
     trainer.test(model, test_dataloader)
     
     

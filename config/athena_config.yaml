@@ -23,6 +23,7 @@ model:
   loss:
     _target_: src.losses.CrossEntropy
   output_max_len: 32
+  test_output: /net/tscratch/people/plgmstroinski/logs/outputs/
 
 data:
   path: /net/tscratch/people/plgmstroinski/data/standard

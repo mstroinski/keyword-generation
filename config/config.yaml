@@ -29,6 +29,7 @@ model:
   loss:
     _target_: src.losses.CrossEntropy
   output_max_len: 32
+  test_output: ./
 
 data:
   path: data/experiments/standard
