@@ -48,7 +48,7 @@ class KWModel(L.LightningModule):
         metrics = self.calculate_metrics(logits=logits, gt_keywords=keywords)
         metrics["val_loss"] = val_loss
         
-        self.log_dict(metrics, on_epoch=True)
+        self.log_dict(metrics, on_epoch=True, batch_size=64)
     
     def test_step(self, batch: list[dict], batch_idx: int) -> None:
         _, logits = self.step(batch)
@@ -69,21 +69,27 @@ class KWModel(L.LightningModule):
                                       truncation=True)
         
         keywords = [sample["kw"] for sample in batch]
-        encoded_keywords = self.tokenizer(keywords, 
+        
+        try: 
+            encoded_keywords = self.tokenizer(keywords, 
                                           return_tensors="pt", 
                                           max_length=self.config.huggingface.kw_tokenizer_max_len, 
                                           padding="max_length", 
                                           truncation=True, 
                                           is_split_into_words=True)
+        except Exception as E:
+            print(f"BAD KW: {keywords}")
+            print(f"{len(keywords) = }")
+            print(f"{len(batch) = }")
         encoded_keywords.input_ids[encoded_keywords.input_ids[:, :] == self.tokenizer.pad_token_id] = -100
-        
-        # This approach calculates loss twice but it still outperforms generate() / manual label shifting 
-        logits = self.model(input_ids=encoded_text.input_ids, 
-                            attention_mask=encoded_text.attention_mask, 
-                            decoder_attention_mask=encoded_keywords.attention_mask, 
-                            labels=encoded_keywords.input_ids).logits
 
-        loss = self.loss(logits.view(-1, logits.size(-1)), encoded_keywords.input_ids.view(-1))
+        # This approach calculates loss twice but it still outperforms generate() / manual label shifting 
+        logits = self.model(input_ids=encoded_text.input_ids.to("cuda:0"), 
+                attention_mask=encoded_text.attention_mask.to("cuda:0"), 
+                decoder_attention_mask=encoded_keywords.attention_mask.to("cuda:0"), 
+                labels=encoded_keywords.input_ids.to("cuda:0")).logits
+
+        loss = self.loss(logits.view(-1, logits.size(-1)), encoded_keywords.input_ids.view(-1).to("cuda:0"))
         
         return loss, logits
         

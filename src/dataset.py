@@ -32,7 +32,7 @@ class KWDataset(torch.utils.data.Dataset):
                 for line in chunk:
                     offsets.append(offsets[-1] + len(line))
                 chunk = file.readlines(chunk_size)
-        return offsets
+        return offsets [:-1]
     
 def _collate(x):
     """
