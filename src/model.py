@@ -71,7 +71,9 @@ class KWModel(L.LightningModule):
                                       padding="max_length", 
                                       truncation=True)
         
-        keywords = [sample["kw"] for sample in batch]
+        keywords = [' , '.join(sample["kw"]) for sample in batch]
+        print(keywords)
+        exit()
         
 
         encoded_keywords = self.tokenizer(keywords, 
