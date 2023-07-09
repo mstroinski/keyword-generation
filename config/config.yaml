@@ -26,6 +26,9 @@ model:
   optimizer:
     _target_: torch.optim.Adam
     lr: 0.001
+  scheduler:
+    _target_:torch.optim.lr_scheduler.ExponentialLR
+    gamma: 0.1
   loss:
     _target_: src.losses.CrossEntropy
   output_max_len: 32

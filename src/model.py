@@ -1,3 +1,5 @@
+from typing import Any, Optional
+from lightning.pytorch.utilities.types import LRSchedulerTypeUnion
 from transformers.tokenization_utils import PreTrainedTokenizer
 from hydra.utils import instantiate
 from datetime import datetime
@@ -115,7 +117,12 @@ class KWModel(L.LightningModule):
             for pred, kw in zip(predictions, gt_keywords):
                 sample = f"Predictions: {pred}\nGT: {kw}\n\n"
                 f.write(sample)
+    
+    def lr_scheduler_step(self, scheduler: LRSchedulerTypeUnion, metric: Any | None) -> None:
+        return scheduler.step(epoch=self.current_epoch)
         
-        
-    def configure_optimizers(self) -> torch.optim.Optimizer:
-        return instantiate(self.config.optimizer, params=self.parameters())
+    def configure_optimizers(self) -> dict:
+        optimizer = instantiate(self.config.optimizer, params=self.parameters())
+        scheduler = instantiate(self.config.scheduler)
+
+        return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "monitor": "train_loss"}}

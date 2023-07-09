@@ -29,6 +29,10 @@ class HuggingFace():
 class Optimizer():
     lr: float
     
+@dataclass
+class Scheduler():
+    gamma: float
+    
 @dataclass 
 class Loss():
     pass
@@ -37,6 +41,7 @@ class Loss():
 class Model():
     huggingface: HuggingFace
     optimizer: Optimizer
+    scheduler: Scheduler
     loss: Loss
     output_max_len: int
     test_output: str
