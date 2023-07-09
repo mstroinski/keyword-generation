@@ -26,9 +26,10 @@ def main(cfg: KWConfig):
                         devices=cfg.trainer.devices,
                         max_epochs=cfg.trainer.epoch_count,
                         callbacks=[model_checkpoint, early_stopping],
-                        logger=wandb_logger)
+                        logger=wandb_logger,
+                        precision=16)
     
-    # trainer.fit(model, train_dataloader, val_dataloader)
+    trainer.fit(model, train_dataloader, val_dataloader)
     trainer.test(model, test_dataloader)
     
     

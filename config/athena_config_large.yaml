@@ -1,8 +1,8 @@
 trainer:
   devices: 1
   accelerator: auto
-  epoch_count: 10
-  stopping_patience: 5
+  epoch_count: 25
+  stopping_patience: 4
 
 model:
   huggingface:
@@ -14,9 +14,11 @@ model:
     nnet:
       _target_: transformers.${model.huggingface.huggingface_nnet}.from_pretrained
       pretrained_model_name_or_path: ${model.huggingface.huggingface_model}
+      cache_dir: /net/tscratch/people/plgmstroinski/cache
     tokenizer:
       _target_: transformers.${model.huggingface.huggingface_tokenizer}.from_pretrained
       pretrained_model_name_or_path: ${model.huggingface.huggingface_model}
+      cache_dir: /net/tscratch/people/plgmstroinski/cache
   optimizer:
     _target_: torch.optim.Adam
     lr: 0.001
@@ -28,11 +30,11 @@ model:
 data:
   path: /net/tscratch/people/plgmstroinski/data/standard
   num_workers: 8
-  batch_size: 64
+  batch_size: 8
 
 logging:
   wandb:
-    project: athena-test
+    project: athena-kw
     local_path: /net/tscratch/people/plgmstroinski/logs
   lightning:
     local_path: /net/tscratch/people/plgmstroinski/logs

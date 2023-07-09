@@ -72,16 +72,13 @@ class KWModel(L.LightningModule):
                                       truncation=True)
         
         keywords = [' , '.join(sample["kw"]) for sample in batch]
-        print(keywords)
-        exit()
         
 
         encoded_keywords = self.tokenizer(keywords, 
                                         return_tensors="pt", 
                                         max_length=self.config.huggingface.kw_tokenizer_max_len, 
                                         padding="max_length", 
-                                        truncation=True, 
-                                        is_split_into_words=True)
+                                        truncation=True)
 
         encoded_keywords.input_ids[encoded_keywords.input_ids[:, :] == self.tokenizer.pad_token_id] = -100
 
