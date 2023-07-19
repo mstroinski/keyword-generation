@@ -13,11 +13,11 @@ from config.kw_config import Model
 from src.metrics import BertScore
 
 class KWModel(L.LightningModule):
-    def __init__(self, config: Model, batch_size: int):
+    def __init__(self, config: Model, batch_size: int, tokenizer: PreTrainedTokenizer):
         super(KWModel, self).__init__()
         self.config = config
         self.model = instantiate(config.huggingface.nnet)
-        self.tokenizer: PreTrainedTokenizer = instantiate(config.huggingface.tokenizer)
+        self.tokenizer = tokenizer
         self.loss = instantiate(config.loss)
         self.rouge = evaluate.load("rouge")
         self.bert_score = BertScore()
@@ -87,12 +87,12 @@ class KWModel(L.LightningModule):
         encoded_keywords.input_ids[encoded_keywords.input_ids[:, :] == self.tokenizer.pad_token_id] = -100
 
         # This approach calculates loss twice but it still outperforms generate() / manual label shifting 
-        logits = self.model(input_ids=encoded_text.input_ids.to("cuda:0"), 
-                attention_mask=encoded_text.attention_mask.to("cuda:0"), 
-                decoder_attention_mask=encoded_keywords.attention_mask.to("cuda:0"), 
-                labels=encoded_keywords.input_ids.to("cuda:0")).logits
+        logits = self.model(input_ids=encoded_text.input_ids, 
+                attention_mask=encoded_text.attention_mask, 
+                decoder_attention_mask=encoded_keywords.attention_mask, 
+                labels=encoded_keywords.input_ids).logits
 
-        loss = self.loss(logits.view(-1, logits.size(-1)), encoded_keywords.input_ids.view(-1).to("cuda:0"))
+        loss = self.loss(logits.view(-1, logits.size(-1)), encoded_keywords.input_ids.view(-1))
 
         return loss, logits
         

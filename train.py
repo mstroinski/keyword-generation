@@ -4,6 +4,7 @@ import lightning as L
 from src.dataset import prepare_dataloaders
 from config.kw_config import KWConfig
 from src.model import KWModel
+from hydra.utils import instantiate
 
 cs = hydra.core.config_store.ConfigStore().instance()
 cs.store(name="kw_config", node=KWConfig)
@@ -21,7 +22,7 @@ def main(cfg: KWConfig):
     early_stopping = L.pytorch.callbacks.EarlyStopping(monitor="val_loss", patience=cfg.trainer.stopping_patience)
     
     lr_monitor = L.pytorch.callbacks.LearningRateMonitor(logging_interval='step')
-
+    tokenizer = instantiate(config.model.huggingface.tokenizer)
 
     model = KWModel(cfg.model, batch_size=cfg.data.batch_size)
     trainer = L.Trainer(accelerator=cfg.trainer.accelerator,
