@@ -125,6 +125,6 @@ class KWModel(L.LightningModule):
         
     def configure_optimizers(self) -> dict:
         optimizer = instantiate(self.config.optimizer, params=self.parameters())
-        # scheduler = instantiate(self.config.scheduler, optimizer=optimizer)
-        return optimizer
-        #return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "monitor": "train_loss"}}
+        scheduler = instantiate(self.config.scheduler, optimizer=optimizer)
+        # return optimizer
+        return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "monitor": "train_loss"}}

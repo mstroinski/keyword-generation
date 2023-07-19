@@ -20,12 +20,14 @@ def main(cfg: KWConfig):
     
     early_stopping = L.pytorch.callbacks.EarlyStopping(monitor="val_loss", patience=cfg.trainer.stopping_patience)
     
+    lr_monitor = L.pytorch.callbacks.LearningRateMonitor(logging_interval='step')
+
 
     model = KWModel(cfg.model, batch_size=cfg.data.batch_size)
     trainer = L.Trainer(accelerator=cfg.trainer.accelerator,
                         devices=cfg.trainer.devices,
                         max_epochs=cfg.trainer.epoch_count,
-                        callbacks=[model_checkpoint, early_stopping],
+                        callbacks=[model_checkpoint, early_stopping, lr_monitor],
                         logger=wandb_logger,
                         precision="bf16")
     
