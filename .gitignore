@@ -25,3 +25,4 @@ job.sh
 config/athena_config_base.yaml
 config/athena_config_small.yaml
 config/athena_config_small_2.yaml
+config/athena_config_large_2.yaml

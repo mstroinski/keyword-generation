@@ -7,6 +7,8 @@ import lightning as L
 import evaluate
 import torch
 
+from transformers import get_linear_schedule_with_warmup
+
 from config.kw_config import Model
 from src.metrics import BertScore
 
@@ -91,7 +93,7 @@ class KWModel(L.LightningModule):
                 labels=encoded_keywords.input_ids.to("cuda:0")).logits
 
         loss = self.loss(logits.view(-1, logits.size(-1)), encoded_keywords.input_ids.view(-1).to("cuda:0"))
-        
+
         return loss, logits
         
     def calculate_metrics(self, logits: torch.Tensor, gt_keywords: list[list[str]]) -> dict:
@@ -123,6 +125,6 @@ class KWModel(L.LightningModule):
         
     def configure_optimizers(self) -> dict:
         optimizer = instantiate(self.config.optimizer, params=self.parameters())
-        scheduler = instantiate(self.config.scheduler)
-
-        return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "monitor": "train_loss"}}
+        # scheduler = instantiate(self.config.scheduler, optimizer=optimizer)
+        return optimizer
+        #return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "monitor": "train_loss"}}
