@@ -51,7 +51,7 @@ class KWModel(L.LightningModule):
     def validation_step(self, batch: list[dict], batch_idx: int) -> None:
         val_loss, logits = self.step(batch)
         
-        keywords = [sample["kw"] for sample in batch]
+        keywords = [sample[2] for sample in batch]
         metrics = self.calculate_metrics(logits=logits, gt_keywords=keywords)
         metrics["val_loss"] = val_loss
         
@@ -67,32 +67,22 @@ class KWModel(L.LightningModule):
         self.save_test_output(logits=logits, gt_keywords=keywords)
         self.log_dict(metrics, on_epoch=True, batch_size=self.batch_size)
         
-    def step(self, batch: list[dict]) -> tuple[torch.Tensor, torch.Tensor]:
-        texts = [' '.join(["Generate keywords: ", sample["title"], sample["abstract"]]) for sample in batch]
-        encoded_text = self.tokenizer(texts, 
-                                      return_tensors="pt", 
-                                      max_length=self.config.huggingface.text_tokenizer_max_len, 
-                                      padding="max_length", 
-                                      truncation=True)
-        
-        keywords = [' , '.join(sample["kw"]) for sample in batch]
+    def step(self, batch: list[list]) -> tuple[torch.Tensor, torch.Tensor]:
+        encoded_text_ids = torch.vstack([sample[0]["input_ids"] for sample in batch])
+        encoded_text_mask = torch.vstack([sample[0]["attention_mask"] for sample in batch])
+        encoded_keywords_ids = torch.vstack([sample[1]["input_ids"] for sample in batch])
+        encoded_keywords_mask = torch.vstack([sample[1]["attention_mask"] for sample in batch])
         
 
-        encoded_keywords = self.tokenizer(keywords, 
-                                        return_tensors="pt", 
-                                        max_length=self.config.huggingface.kw_tokenizer_max_len, 
-                                        padding="max_length", 
-                                        truncation=True)
-
-        encoded_keywords.input_ids[encoded_keywords.input_ids[:, :] == self.tokenizer.pad_token_id] = -100
+        encoded_keywords_ids[encoded_keywords_ids[:, :] == self.tokenizer.pad_token_id] = -100
 
         # This approach calculates loss twice but it still outperforms generate() / manual label shifting 
-        logits = self.model(input_ids=encoded_text.input_ids, 
-                attention_mask=encoded_text.attention_mask, 
-                decoder_attention_mask=encoded_keywords.attention_mask, 
-                labels=encoded_keywords.input_ids).logits
+        logits = self.model(input_ids=encoded_text_ids, 
+                attention_mask=encoded_text_mask, 
+                decoder_attention_mask=encoded_keywords_mask, 
+                labels=encoded_keywords_ids).logits
 
-        loss = self.loss(logits.view(-1, logits.size(-1)), encoded_keywords.input_ids.view(-1))
+        loss = self.loss(logits.view(-1, logits.size(-1)), encoded_keywords_ids.view(-1))
 
         return loss, logits
         

@@ -1,13 +1,15 @@
+from hydra.utils import instantiate
 import torch.utils.data
 import json
 
 from config.kw_config import Data
 
+
 class KWDataset(torch.utils.data.Dataset):
-    def __init__(self, data_path: str):
+    def __init__(self, data_path: str, huggingface):
         super(KWDataset, self).__init__()
         self.data_path = data_path
-        
+        self.tokenizer = instantiate(huggingface.tokenizer)
         self.offset_list = self._get_offset_list(self.data_path)
         
     def __len__(self):
@@ -22,7 +24,23 @@ class KWDataset(torch.utils.data.Dataset):
                 entry = json.loads(line)
             except Exception as e:
                 entry = {"title": "", "abstract": "", "kw": [], "fos": {}}
-            return entry
+                
+            text = " ".join(["Generate keyphrases: ", entry["title"], entry["abstract"]])
+            keywords = ' , '.join(entry["kw"])
+            
+            encoded_text = self.tokenizer(text, 
+                                        return_tensors="pt", 
+                                        max_length=512, 
+                                        padding="max_length", 
+                                        truncation=True)
+            
+            encoded_keywords = self.tokenizer(keywords, 
+                                return_tensors="pt", 
+                                max_length=32, 
+                                padding="max_length", 
+                                truncation=True)
+            
+            return encoded_text, encoded_keywords, entry["kw"]
     
     def _get_offset_list(self, path: str, chunk_size: int=2**10) -> list[int]:
         offsets = [0]
@@ -41,11 +59,11 @@ def _collate(x):
     """
     return x
     
-def prepare_dataloaders(config: Data) -> tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
+def prepare_dataloaders(config: Data, huggingface) -> tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
 
-    train_data = KWDataset(data_path=config.path+"/train.txt")
-    val_data = KWDataset(data_path=config.path+"/val.txt")
-    test_data = KWDataset(data_path=config.path+"/test.txt")
+    train_data = KWDataset(data_path=config.path+"/train.txt", huggingface=huggingface)
+    val_data = KWDataset(data_path=config.path+"/val.txt", huggingface=huggingface)
+    test_data = KWDataset(data_path=config.path+"/test.txt", huggingface=huggingface)
     
     train_dataloader = torch.utils.data.DataLoader(train_data,
                                                    batch_size=config.batch_size,

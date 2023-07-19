@@ -1,17 +1,17 @@
+from hydra.utils import instantiate
 import hydra.core.config_store
 import lightning as L 
 
 from src.dataset import prepare_dataloaders
 from config.kw_config import KWConfig
 from src.model import KWModel
-from hydra.utils import instantiate
 
 cs = hydra.core.config_store.ConfigStore().instance()
 cs.store(name="kw_config", node=KWConfig)
 
 @hydra.main(version_base=None, config_path="config", config_name="config")
 def main(cfg: KWConfig):
-    train_dataloader, val_dataloader, test_dataloader = prepare_dataloaders(cfg.data)
+    train_dataloader, val_dataloader, test_dataloader = prepare_dataloaders(cfg.data, cfg.model.huggingface)
 
     # wandb_logger = L.pytorch.loggers.WandbLogger(project=cfg.logging.wandb.project, save_dir=cfg.logging.wandb.local_path)    
     # wandb_logger.experiment.config.update(cfg)
@@ -22,9 +22,9 @@ def main(cfg: KWConfig):
     early_stopping = L.pytorch.callbacks.EarlyStopping(monitor="val_loss", patience=cfg.trainer.stopping_patience)
     
     lr_monitor = L.pytorch.callbacks.LearningRateMonitor(logging_interval='step')
+     
     tokenizer = instantiate(cfg.model.huggingface.tokenizer)
-
-    model = KWModel(cfg.model, batch_size=cfg.data.batch_size)
+    model = KWModel(cfg.model, batch_size=cfg.data.batch_size, tokenizer=tokenizer)
     trainer = L.Trainer(accelerator=cfg.trainer.accelerator,
                         devices=cfg.trainer.devices,
                         max_epochs=cfg.trainer.epoch_count,
