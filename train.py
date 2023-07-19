@@ -13,8 +13,8 @@ cs.store(name="kw_config", node=KWConfig)
 def main(cfg: KWConfig):
     train_dataloader, val_dataloader, test_dataloader = prepare_dataloaders(cfg.data)
 
-    wandb_logger = L.pytorch.loggers.WandbLogger(project=cfg.logging.wandb.project, save_dir=cfg.logging.wandb.local_path)    
-    wandb_logger.experiment.config.update(cfg)
+    # wandb_logger = L.pytorch.loggers.WandbLogger(project=cfg.logging.wandb.project, save_dir=cfg.logging.wandb.local_path)    
+    # wandb_logger.experiment.config.update(cfg)
     
     model_checkpoint = L.pytorch.callbacks.ModelCheckpoint(dirpath=cfg.logging.lightning.local_path,
                                                            monitor="val_loss")
@@ -22,14 +22,14 @@ def main(cfg: KWConfig):
     early_stopping = L.pytorch.callbacks.EarlyStopping(monitor="val_loss", patience=cfg.trainer.stopping_patience)
     
     lr_monitor = L.pytorch.callbacks.LearningRateMonitor(logging_interval='step')
-    tokenizer = instantiate(config.model.huggingface.tokenizer)
+    tokenizer = instantiate(cfg.model.huggingface.tokenizer)
 
     model = KWModel(cfg.model, batch_size=cfg.data.batch_size)
     trainer = L.Trainer(accelerator=cfg.trainer.accelerator,
                         devices=cfg.trainer.devices,
                         max_epochs=cfg.trainer.epoch_count,
                         callbacks=[model_checkpoint, early_stopping, lr_monitor],
-                        logger=wandb_logger,
+                        # logger=wandb_logger,
                         precision="bf16")
     
     trainer.fit(model, train_dataloader, val_dataloader)
