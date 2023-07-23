@@ -23,7 +23,7 @@ def main(cfg: KWConfig):
     lr_monitor = L.pytorch.callbacks.LearningRateMonitor(logging_interval='step')
 
 
-    model = KWModel(cfg.model, batch_size=cfg.data.batch_size)
+    model = KWModel(cfg.model, batch_size=cfg.data.batch_size, n_epochs=cfg.trainer.epoch_count, len_train_dataloader=len(train_dataloader))
     trainer = L.Trainer(accelerator=cfg.trainer.accelerator,
                         devices=cfg.trainer.devices,
                         max_epochs=cfg.trainer.epoch_count,

@@ -7,13 +7,13 @@ import lightning as L
 import evaluate
 import torch
 
-from transformers import get_linear_schedule_with_warmup
+from transformers.utils.dummy_pt_objects import get_linear_schedule_with_warmup
 
 from config.kw_config import Model
 from src.metrics import BertScore
 
 class KWModel(L.LightningModule):
-    def __init__(self, config: Model, batch_size: int):
+    def __init__(self, config: Model, batch_size: int, n_epochs: int, len_train_dataloader: int):
         super(KWModel, self).__init__()
         self.config = config
         self.model = instantiate(config.huggingface.nnet)
@@ -22,9 +22,11 @@ class KWModel(L.LightningModule):
         self.rouge = evaluate.load("rouge")
         self.bert_score = BertScore()
         self.batch_size = batch_size
+        self.n_epochs = n_epochs
+        self.len_train_dataloader = len_train_dataloader
         
-        _now = datetime.now().strftime("%H:%M:%S")
-        self.test_output_path = config.test_output + _now + ".txt"
+        _now = datetime.now().strftime("%d.%m-%H:%M")
+        self.test_output_path = config.test_output + f"{config.huggingface.huggingface_model}-{_now}" + ".txt"
     
     def forward(self, x: list|str) -> str:
         tokenized_sample = self.tokenizer(x,
@@ -120,11 +122,19 @@ class KWModel(L.LightningModule):
                 sample = f"Predictions: {pred}\nGT: {kw}\n\n"
                 f.write(sample)
     
-    def lr_scheduler_step(self, scheduler: LRSchedulerTypeUnion, metric: Any | None) -> None:
-        return scheduler.step(epoch=self.current_epoch)
+    # def lr_scheduler_step(self, scheduler: LRSchedulerTypeUnion, metric: Any | None) -> None:
+    #     return scheduler.step(epoch=self.current_epoch)
         
     def configure_optimizers(self) -> dict:
         optimizer = instantiate(self.config.optimizer, params=self.parameters())
-        scheduler = instantiate(self.config.scheduler, optimizer=optimizer)
         # return optimizer
-        return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "monitor": "train_loss"}}
+        num_train_optimization_steps = self.n_epochs * self.len_train_dataloader
+        lr_scheduler = {'scheduler': get_linear_schedule_with_warmup(optimizer,
+                                                    num_warmup_steps=5000,
+                                                    num_training_steps=num_train_optimization_steps),
+                        'name': 'learning_rate',
+                        'interval':'step',
+                        'frequency': 1}
+        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
+        # scheduler = instantiate(self.config.scheduler, optimizer=optimizer)
+        # return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "monitor": "train_loss"}}
