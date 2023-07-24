@@ -67,13 +67,13 @@ class KWModel(L.LightningModule):
                                       max_length=self.config.huggingface.text_tokenizer_max_len, 
                                       padding="max_length", 
                                       truncation=True)
-        logits = self.model.generate(encoded_text.input_ids)
+        pred_tokens = self.model.generate(encoded_text.input_ids)
         
         keywords = [sample["kw"] for sample in batch]
-        metrics = self.calculate_metrics(logits=logits, gt_keywords=keywords)
+        metrics = self.calculate_metrics(pred_tokens=pred_tokens, gt_keywords=keywords)
         metrics = {"test_"+key: val for key, val in metrics.items()}
         
-        self.save_test_output(logits=logits, gt_keywords=keywords)
+        self.save_test_output(pred_tokens=pred_tokens, gt_keywords=keywords)
         self.log_dict(metrics, on_epoch=True, batch_size=self.batch_size)
         
     def step(self, batch: list[dict]) -> tuple[torch.Tensor, torch.Tensor]:
@@ -108,7 +108,7 @@ class KWModel(L.LightningModule):
     def calculate_metrics(self, gt_keywords: list[list[str]], logits: torch.Tensor|None = None, pred_tokens: torch.Tensor|None = None) -> dict:
         metrics = dict()
         
-        if not pred_tokens and logits:
+        if pred_tokens is None and logits is not None:
             pred_tokens = torch.argmax(input=logits, dim=-1)
         predictions = self.tokenizer.batch_decode(pred_tokens, skip_special_tokens=True, clean_up_tokenization_spaces=True)
         
@@ -122,8 +122,8 @@ class KWModel(L.LightningModule):
             
         return metrics
     
-    def save_test_output(self, logits: torch.Tensor, gt_keywords: list[list[str]]) -> None:
-        pred_tokens = torch.argmax(input=logits, dim=-1)
+    def save_test_output(self, pred_tokens: torch.Tensor, gt_keywords: list[list[str]]) -> None:
+        # pred_tokens = torch.argmax(input=logits, dim=-1)
         predictions = self.tokenizer.batch_decode(pred_tokens, skip_special_tokens=True, clean_up_tokenization_spaces=True)
         
         with open(self.test_output_path, "a") as f:
