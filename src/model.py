@@ -7,7 +7,7 @@ import lightning as L
 import evaluate
 import torch
 
-from transformers.utils.dummy_pt_objects import get_linear_schedule_with_warmup
+from transformers import get_linear_schedule_with_warmup
 
 from config.kw_config import Model
 from src.metrics import BertScore
@@ -60,7 +60,14 @@ class KWModel(L.LightningModule):
         self.log_dict(metrics, on_epoch=True, batch_size=self.batch_size)
     
     def test_step(self, batch: list[dict], batch_idx: int) -> None:
-        _, logits = self.step(batch)
+        # _, logits = self.step(batch)
+        texts = [' '.join(["Generate keywords: ", sample["title"], sample["abstract"]]) for sample in batch]
+        encoded_text = self.tokenizer(texts, 
+                                      return_tensors="pt", 
+                                      max_length=self.config.huggingface.text_tokenizer_max_len, 
+                                      padding="max_length", 
+                                      truncation=True)
+        logits = self.model.generate(encoded_text.input_ids)
         
         keywords = [sample["kw"] for sample in batch]
         metrics = self.calculate_metrics(logits=logits, gt_keywords=keywords)
@@ -98,9 +105,11 @@ class KWModel(L.LightningModule):
 
         return loss, logits
         
-    def calculate_metrics(self, logits: torch.Tensor, gt_keywords: list[list[str]]) -> dict:
+    def calculate_metrics(self, gt_keywords: list[list[str]], logits: torch.Tensor|None = None, pred_tokens: torch.Tensor|None = None) -> dict:
         metrics = dict()
-        pred_tokens = torch.argmax(input=logits, dim=-1)
+        
+        if not pred_tokens and logits:
+            pred_tokens = torch.argmax(input=logits, dim=-1)
         predictions = self.tokenizer.batch_decode(pred_tokens, skip_special_tokens=True, clean_up_tokenization_spaces=True)
         
         rouge = self.rouge.compute(predictions=predictions, references=gt_keywords)
@@ -135,6 +144,7 @@ class KWModel(L.LightningModule):
                         'name': 'learning_rate',
                         'interval':'step',
                         'frequency': 1}
+        
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
         # scheduler = instantiate(self.config.scheduler, optimizer=optimizer)
         # return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "monitor": "train_loss"}}
