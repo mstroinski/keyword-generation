@@ -20,6 +20,7 @@ data/
 
 # SLURM job script which includes wandb key :) 
 job.sh
+job_cross.sh
 
 # Configs
 config/athena_config_base.yaml

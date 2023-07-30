@@ -67,7 +67,7 @@ class KWModel(L.LightningModule):
                                       max_length=self.config.huggingface.text_tokenizer_max_len, 
                                       padding="max_length", 
                                       truncation=True)
-        pred_tokens = self.model.generate(encoded_text.input_ids)
+        pred_tokens = self.model.generate(encoded_text.input_ids.to("cuda:0"))
         
         keywords = [sample["kw"] for sample in batch]
         metrics = self.calculate_metrics(pred_tokens=pred_tokens, gt_keywords=keywords)
@@ -128,16 +128,17 @@ class KWModel(L.LightningModule):
         
         with open(self.test_output_path, "a") as f:
             for pred, kw in zip(predictions, gt_keywords):
-                sample = f"Predictions: {pred}\nGT: {kw}\n\n"
+                sample = f"Predictions: {pred.encode('utf-8')}\nGT: {kw}\n\n"
                 f.write(sample)
     
-    # def lr_scheduler_step(self, scheduler: LRSchedulerTypeUnion, metric: Any | None) -> None:
-    #     return scheduler.step(epoch=self.current_epoch)
+    def lr_scheduler_step(self, scheduler: LRSchedulerTypeUnion, metric: Any | None) -> None:
+        return scheduler.step(epoch=self.current_epoch)
         
     def configure_optimizers(self) -> dict:
         optimizer = instantiate(self.config.optimizer, params=self.parameters())
-        # return optimizer
+       # return optimizer
         num_train_optimization_steps = self.n_epochs * self.len_train_dataloader
+        '''    
         lr_scheduler = {'scheduler': get_linear_schedule_with_warmup(optimizer,
                                                     num_warmup_steps=5000,
                                                     num_training_steps=num_train_optimization_steps),
@@ -146,5 +147,7 @@ class KWModel(L.LightningModule):
                         'frequency': 1}
         
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
-        # scheduler = instantiate(self.config.scheduler, optimizer=optimizer)
-        # return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "monitor": "train_loss"}}
+        '''
+        scheduler = instantiate(self.config.scheduler, optimizer=optimizer)
+        return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "monitor": "val_loss"}}
+    

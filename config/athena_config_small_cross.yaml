@@ -1,0 +1,42 @@
+trainer:
+  devices: 1
+  accelerator: auto
+  epoch_count: 6
+  stopping_patience: 4
+
+model:
+  huggingface:
+    huggingface_model: t5-small
+    huggingface_nnet: T5ForConditionalGeneration
+    huggingface_tokenizer: T5Tokenizer
+    text_tokenizer_max_len: 512
+    kw_tokenizer_max_len: 80
+    nnet:
+      _target_: transformers.${model.huggingface.huggingface_nnet}.from_pretrained
+      pretrained_model_name_or_path: ${model.huggingface.huggingface_model}
+      cache_dir: /net/tscratch/people/plgmstroinski/cache
+    tokenizer:
+      _target_: transformers.${model.huggingface.huggingface_tokenizer}.from_pretrained
+      pretrained_model_name_or_path: ${model.huggingface.huggingface_model}
+      cache_dir: /net/tscratch/people/plgmstroinski/cache
+  optimizer:
+    _target_: torch.optim.AdamW
+    lr: 0.001
+  scheduler:
+    _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  loss:
+    _target_: src.losses.CrossEntropy
+  output_max_len: 80
+  test_output: /net/tscratch/people/plgmstroinski/logs/outputs/cross
+
+data:
+  path: /net/tscratch/people/plgmstroinski/data/cross_domain
+  num_workers: 8
+  batch_size: 64
+
+logging:
+  wandb:
+    project: athena-kw-cross
+    local_path: /net/tscratch/people/plgmstroinski/logs
+  lightning:
+    local_path: /net/tscratch/people/plgmstroinski/logs
